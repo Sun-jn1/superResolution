@@ -1,5 +1,5 @@
 from Data import train_loader,test_loader
-from Model import Extract_features,Recovery_features
+from DBPNmodel import Net
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
@@ -7,12 +7,12 @@ import torch
 import matplotlib.pyplot as plt
 
 device="cuda"
-epo_num = 10
-first_step = Extract_features()
-Model = Recovery_features(get_features=first_step)
+epo_num = 100
+
+Model = Net(num_channels=3, base_filter=64, feat = 256, num_stages=10)
 Model = Model.to(device)
 criterion = nn.MSELoss().to(device)
-learn_rate = 0.01
+learn_rate = 0.1
 optimizer = optim.SGD(Model.parameters(),learn_rate)
 train_iter_loss=[]
 test_iter_loss=[]
@@ -30,6 +30,7 @@ for epo in range(epo_num):
         input=input.to(device)
         target=target.to(device)
         output = Model(input)
+
         optimizer.zero_grad()
         loss = criterion(output,target)
         loss.backward()
@@ -60,6 +61,7 @@ for epo in range(epo_num):
         plt.imshow(input1.transpose(1,2,0))
         plt.figure()
         output1 = output[0].cpu()
+
         output1 = output1.detach().numpy()
 
         plt.imshow(output1.transpose(1,2,0))
