@@ -18,17 +18,23 @@ class X2Data(Dataset):
         self.ouput = []
         self.inputs = []
         data_transform = transforms.Compose(transforms=[
-            transforms.Resize((180,180)),
+            transforms.Resize((64,64)),
 
             transforms.ToTensor(),
             # transforms.Normalize([0.42477179, 0.43378679, 0.3698565], [0.19699529, 0.1823555, 0.1743905]),
             ])
+        data_transform1 = transforms.Compose(transforms=[
+            transforms.Resize((128,128)),
+
+            transforms.ToTensor(),
+            # transforms.Normalize([0.42477179, 0.43378679, 0.3698565], [0.19699529, 0.1823555, 0.1743905]),
+        ])
         for document in documents:
             for root, dirs, files in os.walk(file_path+symbol+document+symbol+TruthValue):
 
                 for file in files:
                     img=Image.open(root + symbol + file)
-                    img=data_transform(img)
+                    img=data_transform1(img)
                     img=np.array(img,dtype="float")
                     self.ouput.append(img)
 
@@ -43,7 +49,7 @@ class X2Data(Dataset):
                     img = np.array(img,dtype="float")
                     self.inputs.append(img)
         self.len = len(self.ouput)
-        # self.len = 15
+        # self.len = 2
 
         # self.ouput = np.array(self.ouput)
         self.ouput = np.array(self.ouput, dtype="float")
