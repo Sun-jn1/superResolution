@@ -1,42 +1,70 @@
 from Data import train_loader,test_loader
-from Model import Extract_features,Recovery_features
-import numpy as np
+from model import Net,ModelHelper
 import torch.nn as nn
 import torch.optim as optim
 import torch
 import matplotlib.pyplot as plt
+from option import args
 
 device="cuda"
-epo_num = 10
-first_step = Extract_features()
-Model = Recovery_features(get_features=first_step)
+epo_num = 100
+
+Model = Net.DRN(args)
 Model = Model.to(device)
+lrModel = ModelHelper.DownBlock(args,4)
+fixModel = ModelHelper.DownBlockplus(args,4)  #change
+lrModel = lrModel.to(device)
+fixModel = fixModel.to(device) #change
 criterion = nn.MSELoss().to(device)
+# criterion = nn.L1Loss().to(device) #change
 learn_rate = 0.01
 optimizer = optim.SGD(Model.parameters(),learn_rate)
+lroptimizer = optim.SGD(lrModel.parameters(),learn_rate)
+fixoptimizer = optim.SGD(fixModel.parameters(),learn_rate) #change
+schedule1 = torch.optim.lr_scheduler.StepLR(lroptimizer,step_size=50,gamma=0.5)
+schedule2 = torch.optim.lr_scheduler.StepLR(fixoptimizer,step_size=50,gamma=0.5)
+schedule3 = torch.optim.lr_scheduler.StepLR(optimizer,step_size=50,gamma=0.5)
 train_iter_loss=[]
 test_iter_loss=[]
 epo_train_loss=[]
 epo_test_loss=[]
 
 for epo in range(epo_num):
-    learn_rate = learn_rate*(0.1**((epo+1)%100))
     train_loss = 0
     Model.train()
     if (epo + 1) % 1 == 0:
         print("第", epo, "轮迭代")
     for i,(input,target) in enumerate(train_loader):
-        # target = torch.sigmoid(target)
         input=input.to(device)
         target=target.to(device)
         output = Model(input)
+        midput = output[1]
+        output=output[-1]
         optimizer.zero_grad()
-        loss = criterion(output,target)
+        lroptimizer.zero_grad()
+        fixoptimizer.zero_grad() #change
+        loss1 = criterion(output,target)
+        lr = lrModel(output)
+        fixlr = fixModel(target) #change
+        fixloss1 = criterion(fixlr[-1],input) #change
+        fixloss2 = criterion(midput,fixlr[0]) #change
+        loss2 = criterion(lr,input)
+        # loss = loss1 + loss2
+        loss = 2*loss1+loss2+2*fixloss1+2*fixloss2 #change
         loss.backward()
+        optimizer.step()
+        lroptimizer.step()
+        fixoptimizer.step()
         iter_loss = loss.item()
         train_iter_loss.append(iter_loss)
         train_loss+=iter_loss
-        optimizer.step()
+
+    schedule1.step()
+    schedule2.step()
+    schedule3.step()
+
+    train_loss/=len(train_loader)
+    print(train_loss)
     epo_train_loss.append(train_loss)
 
     test_loss = 0
@@ -46,12 +74,16 @@ for epo in range(epo_num):
             input = input.to(device)
             target = target.to(device)
             output = Model(input)
+            output = output[-1]
             optimizer.zero_grad()
             loss = criterion(output,target)
             iter_loss = loss.item()
             test_iter_loss.append(iter_loss)
             test_loss+=iter_loss
+        test_loss/=len(test_loader)
+        print(test_loss)
         epo_test_loss.append(test_loss)
+
 
 
     if epo==epo_num-1:
