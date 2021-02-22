@@ -117,7 +117,7 @@ class Data(Dataset):
     def __len__(self):
         return self.len
 pdata=Data()
-pdata = DataLoader(pdata,batch_size=4)
+pdata = DataLoader(pdata,batch_size=4,shuffle=False)
 
 
 
